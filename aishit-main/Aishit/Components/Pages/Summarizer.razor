@@ -1,0 +1,1113 @@
+@page "/summarizer"
+@using Aishit.Models
+@using Aishit.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IAIService AIService
+@inject IFileProcessingService FileProcessor
+@rendermode InteractiveServer
+
+<PageTitle>AI Study Assistant</PageTitle>
+
+<style>
+    .page-root {
+        width: 100%;
+        min-height: 100vh;
+        background: linear-gradient(158deg, #2E6FFF 0%, #0B1566 52%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        overflow-x: hidden;
+        color: #fff;
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 40px 20px;
+    }
+
+    .page-header {
+        width: 100%;
+        max-width: 1200px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .nav-buttons button {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: 10px;
+        margin-left: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+
+    .nav-buttons button:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .content-wrapper {
+        width: 100%;
+        max-width: 1200px;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .upload-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 25px;
+        font-weight: 500;
+    }
+
+    .form-label {
+        color: #fff;
+        font-weight: 500;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .file-input, .custom-textarea {
+        width: 100%;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        font-family: inherit;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    .custom-textarea {
+        resize: vertical;
+        min-height: 150px;
+    }
+
+    .file-input:focus, .custom-textarea:focus {
+        border-color: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .custom-textarea::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .text-muted {
+        color: rgba(255, 255, 255, 0.6) !important;
+        font-size: 0.875rem;
+    }
+
+    .btn-sample {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #fff;
+        padding: 8px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+
+    .btn-sample:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .btn-sample:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .btn-action {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    .btn-action:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-action:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #2E6FFF;
+        color: #fff;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: #fff;
+    }
+
+    .btn-info {
+        background: #3b82f6;
+        color: #fff;
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: #fff;
+    }
+
+    .result-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .result-header {
+        padding: 20px 30px;
+        color: #fff;
+    }
+
+    .result-header.bg-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .result-header.bg-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .result-header.bg-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .result-body {
+        padding: 30px;
+        color: #1f2937;
+    }
+
+    .flashcard {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        min-height: 150px;
+        display: flex;
+        align-items: center;
+    }
+
+    .flashcard:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .flashcard-content {
+        width: 100%;
+    }
+
+    .quiz-question {
+        background: #fff;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .quiz-question.border-success {
+        border-color: #10b981;
+    }
+
+    .quiz-question.border-danger {
+        border-color: #ef4444;
+    }
+
+    .scenario-card {
+        background: #fff;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .scenario-header {
+        background: #e5e7eb;
+        padding: 12px 20px;
+        color: #1f2937;
+    }
+
+    .scenario-body {
+        padding: 20px;
+    }
+
+    .alert {
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+
+    .alert-info {
+        background-color: #dbeafe;
+        border: 1px solid #93c5fd;
+        color: #1e40af;
+    }
+
+    .alert-success {
+        background-color: #d1fae5;
+        border: 1px solid #6ee7b7;
+        color: #065f46;
+    }
+
+    .alert-danger {
+        background-color: #fee2e2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+    }
+
+    .alert-secondary {
+        background-color: #f3f4f6;
+        border: 1px solid #d1d5db;
+        color: #374151;
+    }
+
+    .spinner-border {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.2rem;
+    }
+
+    .btn-group {
+        display: inline-flex;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .btn-check {
+        position: absolute;
+        clip: rect(0,0,0,0);
+        pointer-events: none;
+    }
+
+    .btn-outline-success, .btn-outline-warning, .btn-outline-danger {
+        padding: 8px 16px;
+        border: 1px solid;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-success {
+        border-color: #10b981;
+    }
+
+    .btn-outline-warning {
+        border-color: #f59e0b;
+    }
+
+    .btn-outline-danger {
+        border-color: #ef4444;
+    }
+
+    .btn-check:checked + .btn-outline-success {
+        background: #10b981;
+        color: #fff;
+    }
+
+    .btn-check:checked + .btn-outline-warning {
+        background: #f59e0b;
+        color: #fff;
+    }
+
+    .btn-check:checked + .btn-outline-danger {
+        background: #ef4444;
+        color: #fff;
+    }
+</style>
+
+<div class="container mt-4">
+    <h3>🎓 AI Study Assistant</h3>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Upload File or Enter Text</h5>
+            
+            <!-- File Upload Section -->
+            <div class="mb-3">
+                <label for="fileInput" class="form-label">Upload File (PDF, DOCX, TXT):</label>
+                <InputFile 
+                    id="fileInput" 
+                    OnChange="HandleFileSelected" 
+                    class="form-control"
+                    accept=".txt,.pdf,.docx"
+                    disabled="@isProcessing" />
+                <small class="text-muted">
+                    Supported formats: PDF, DOCX, TXT (Max 50MB)
+                </small>
+            </div>
+
+            @if (isUploadingFile)
+            {
+                <div class="alert alert-info">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Processing file: @uploadedFileName
+                </div>
+            }
+
+            <div class="text-center my-3">
+                <strong>- OR -</strong>
+            </div>
+            
+            <!-- Text Input Section -->
+            <div class="mb-3">
+                <label for="textInput" class="form-label">Paste Text Directly:</label>
+                <textarea 
+                    class="form-control" 
+                    id="textInput" 
+                    rows="8" 
+                    @bind="inputText"
+                    placeholder="Paste your text here..."
+                    disabled="@isProcessing">
+                </textarea>
+                <small class="text-muted">
+                    Character count: @inputText.Length
+                </small>
+            </div>
+            
+            <div class="mb-3">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadSampleText" disabled="@isProcessing">
+                    Load Sample Text
+                </button>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Scenario Exam Difficulty:</label>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="scenarioDifficulty" id="diffEasy" 
+                           @onchange='() => scenarioDifficulty = ScenarioDifficulty.Easy' 
+                           checked="@(scenarioDifficulty == ScenarioDifficulty.Easy)">
+                    <label class="btn btn-outline-success" for="diffEasy">😊 Easy</label>
+
+                    <input type="radio" class="btn-check" name="scenarioDifficulty" id="diffMedium" 
+                           @onchange='() => scenarioDifficulty = ScenarioDifficulty.Medium' 
+                           checked="@(scenarioDifficulty == ScenarioDifficulty.Medium)">
+                    <label class="btn btn-outline-warning" for="diffMedium">🤔 Medium</label>
+
+                    <input type="radio" class="btn-check" name="scenarioDifficulty" id="diffHard" 
+                           @onchange='() => scenarioDifficulty = ScenarioDifficulty.Hard' 
+                           checked="@(scenarioDifficulty == ScenarioDifficulty.Hard)">
+                    <label class="btn btn-outline-danger" for="diffHard">🔥 Hard</label>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="d-flex flex-wrap gap-2">
+                <button 
+                    class="btn btn-primary" 
+                    @onclick="GenerateSummary"
+                    disabled="@(string.IsNullOrWhiteSpace(inputText) || isProcessing)">
+                    @if (isProcessing && currentAction == "summary")
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    📄 Summarize
+                </button>
+                
+                <button 
+                    class="btn btn-success" 
+                    @onclick="GenerateFlashcards"
+                    disabled="@(string.IsNullOrWhiteSpace(inputText) || isProcessing)">
+                    @if (isProcessing && currentAction == "flashcards")
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    🎴 Create Flashcards
+                </button>
+                
+                <button 
+                    class="btn btn-info" 
+                    @onclick="GenerateQuiz"
+                    disabled="@(string.IsNullOrWhiteSpace(inputText) || isProcessing)">
+                    @if (isProcessing && currentAction == "quiz")
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    📝 Generate Quiz
+                </button>
+
+                <button 
+                    class="btn btn-warning" 
+                    @onclick="GenerateScenarioExam"
+                    disabled="@(string.IsNullOrWhiteSpace(inputText) || isProcessing)">
+                    @if (isProcessing && currentAction == "scenario")
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    🎯 Scenario Exam
+                </button>
+                
+                <button 
+                    class="btn btn-secondary" 
+                    @onclick="Clear"
+                    disabled="@isProcessing">
+                    🗑️ Clear All
+                </button>
+            </div>
+            
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    <strong>Error:</strong> @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success mt-3" role="alert">
+                    ✅ @successMessage
+                </div>
+            }
+        </div>
+    </div>
+    
+    <!-- Summary Display -->
+    @if (summary != null)
+    {
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">📄 Summary</h5>
+                @if (!string.IsNullOrEmpty(uploadedFileName))
+                {
+                    <small>From file: @uploadedFileName</small>
+                }
+            </div>
+            <div class="card-body">
+                <p class="lead">@summary.SummaryText</p>
+                
+                <hr />
+                
+                <h6 class="text-primary">🔑 Key Points:</h6>
+                <ul class="list-group list-group-flush mb-3">
+                    @foreach (var point in summary.KeyPoints)
+                    {
+                        <li class="list-group-item">@point</li>
+                    }
+                </ul>
+                
+                <h6 class="text-success">💡 Key Takeaways:</h6>
+                <p>@summary.KeyTakeaways</p>
+                
+                <small class="text-muted">
+                    Generated at: @summary.CreatedAt.ToString("g")
+                </small>
+            </div>
+        </div>
+    }
+    
+    <!-- Flashcards Display -->
+    @if (flashcards?.Any() == true)
+    {
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">🎴 Flashcards (@flashcards.Count)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach (var (flashcard, index) in flashcards.Select((f, i) => (f, i)))
+                    {
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 flashcard @(flippedCards.Contains(index) ? "flipped" : "")" 
+                                 @onclick="() => FlipCard(index)"
+                                 style="cursor: pointer;">
+                                <div class="card-body">
+                                    @if (!flippedCards.Contains(index))
+                                    {
+                                        <div class="flashcard-front">
+                                            <h6 class="text-primary">Question:</h6>
+                                            <p>@flashcard.Front</p>
+                                            <small class="text-muted">Click to reveal answer</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="flashcard-back">
+                                            <h6 class="text-success">Answer:</h6>
+                                            <p>@flashcard.Back</p>
+                                            <small class="text-muted">Click to see question</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    
+    <!-- Quiz Display -->
+    @if (quizQuestions?.Any() == true)
+    {
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">📝 Quiz (@quizQuestions.Count Questions)</h5>
+                @if (quizSubmitted)
+                {
+                    var score = CalculateScore();
+                    <p class="mb-0">Score: @score.correct / @quizQuestions.Count (@score.percentage.ToString("F0")%)</p>
+                }
+            </div>
+            <div class="card-body">
+                @foreach (var (question, qIndex) in quizQuestions.Select((q, i) => (q, i)))
+                {
+                    var isCorrect = quizSubmitted && IsAnswerCorrect(qIndex, question);
+                    <div class="card mb-3 @(quizSubmitted ? (isCorrect ? "border-success" : "border-danger") : "")">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6>Question @(qIndex + 1):</h6>
+                                <span class="badge bg-secondary">@GetQuestionTypeLabel(question.Type)</span>
+                            </div>
+                            <p class="fw-bold">@question.Question</p>
+                            
+                            @if (question.Type == QuestionType.MultipleChoice || question.Type == QuestionType.ScenarioBased)
+                            {
+                                @foreach (var (option, oIndex) in question.Options.Select((o, i) => (o, i)))
+                                {
+                                    var optionIdxStr = oIndex.ToString();
+                                    <div class="form-check">
+                                        <input 
+                                            class="form-check-input" 
+                                            type="radio" 
+                                            name="question_@qIndex" 
+                                            id="q@(qIndex)_o@(oIndex)"
+                                            disabled="@quizSubmitted"
+                                            checked="@(selectedAnswers.ContainsKey(qIndex) && selectedAnswers[qIndex] == optionIdxStr)"
+                                            @onchange="() => SelectAnswer(qIndex, optionIdxStr)" />
+                                        <label class="form-check-label @(quizSubmitted && oIndex == question.CorrectIndex ? "text-success fw-bold" : "")" for="q@(qIndex)_o@(oIndex)">
+                                            @option
+                                            @if (quizSubmitted && oIndex == question.CorrectIndex)
+                                            {
+                                                <span class="badge bg-success ms-2">✓ Correct</span>
+                                            }
+                                        </label>
+                                    </div>
+                                }
+                            }
+                            else if (question.Type == QuestionType.TrueFalse)
+                            {
+                                <div class="form-check">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="radio" 
+                                        name="question_@qIndex" 
+                                        id="q@(qIndex)_true"
+                                        disabled="@quizSubmitted"
+                                        checked="@(selectedAnswers.ContainsKey(qIndex) && selectedAnswers[qIndex] == "true")"
+                                        @onchange='() => SelectAnswer(qIndex, "true")' />
+                                    <label class="form-check-label @(quizSubmitted && question.CorrectBoolean ? "text-success fw-bold" : "")" for="q@(qIndex)_true">
+                                        True
+                                        @if (quizSubmitted && question.CorrectBoolean)
+                                        {
+                                            <span class="badge bg-success ms-2">✓ Correct</span>
+                                        }
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="radio" 
+                                        name="question_@qIndex" 
+                                        id="q@(qIndex)_false"
+                                        disabled="@quizSubmitted"
+                                        checked="@(selectedAnswers.ContainsKey(qIndex) && selectedAnswers[qIndex] == "false")"
+                                        @onchange='() => SelectAnswer(qIndex, "false")' />
+                                    <label class="form-check-label @(quizSubmitted && !question.CorrectBoolean ? "text-success fw-bold" : "")" for="q@(qIndex)_false">
+                                        False
+                                        @if (quizSubmitted && !question.CorrectBoolean)
+                                        {
+                                            <span class="badge bg-success ms-2">✓ Correct</span>
+                                        }
+                                    </label>
+                                </div>
+                            }
+                            else if (question.Type == QuestionType.Identification)
+                            {
+                                <div class="mb-2">
+                                    <input 
+                                        type="text" 
+                                        class="form-control @(quizSubmitted ? (isCorrect ? "is-valid" : "is-invalid") : "")"
+                                        placeholder="Type your answer here..."
+                                        disabled="@quizSubmitted"
+                                        value="@(selectedAnswers.ContainsKey(qIndex) ? selectedAnswers[qIndex] : string.Empty)"
+                                        @onchange="(e) => SelectAnswer(qIndex, e.Value?.ToString() ?? string.Empty)" />
+                                </div>
+                                @if (quizSubmitted)
+                                {
+                                    <div class="alert alert-success mb-0">
+                                        <strong>Correct Answer:</strong> @question.CorrectAnswer
+                                    </div>
+                                }
+                            }
+                            
+                            @if (quizSubmitted)
+                            {
+                                <div class="alert @(isCorrect ? "alert-success" : "alert-danger") mt-2 mb-0">
+                                    @if (isCorrect)
+                                    {
+                                        <span class="fw-bold">✓ Correct!</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold">✗ Incorrect</span>
+                                    }
+                                    <br />
+                                    <strong>Explanation:</strong> @question.Explanation
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                
+                @if (!quizSubmitted)
+                {
+                    <button class="btn btn-primary" @onclick="SubmitQuiz" disabled="@(selectedAnswers.Count != quizQuestions.Count)">
+                        Submit Quiz (@selectedAnswers.Count/@quizQuestions.Count answered)
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-secondary" @onclick="ResetQuiz">
+                        Retake Quiz
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Scenario Exam Display -->
+    @if (scenarioExam?.Questions?.Any() == true)
+    {
+        <div class="card mt-4" style="background: linear-gradient(135deg, #f0f0f1 0%, #f8f8fa 100%);">
+            <div class="card-header text-white border-0">
+                <h5 class="mb-0">🎯 Scenario-Based Exam (@scenarioExam.Questions.Count Questions)</h5>
+                <small>Apply your knowledge to real-world situations</small>
+            </div>
+            <div class="card-body bg-white">
+                @foreach (var (scenario, sIndex) in scenarioExam.Questions.Select((s, i) => (s, i)))
+                {
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header" style="background-color: #e5e7eb; color: white;">
+                            <h6 class="mb-0">Scenario @(sIndex + 1)</h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Scenario Description -->
+                            <div class="alert alert-info mb-3">
+                                <strong>📖 Scenario:</strong>
+                                <p class="mb-0 mt-2">@scenario.Scenario</p>
+                            </div>
+
+                            <!-- Question -->
+                            <h6 class="text-primary mb-3">
+                                <strong>Question:</strong> @scenario.Question
+                            </h6>
+
+                            <!-- Answer Input -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Your Answer:</label>
+                                <textarea 
+                                    class="form-control" 
+                                    rows="4"
+                                    placeholder="Type your answer here..."
+                                    disabled="@scenario.IsGraded"
+                                    @bind="scenario.UserAnswer"
+                                    style="font-size: 14px;">
+                                </textarea>
+                                <small class="text-muted">Explain your reasoning clearly.</small>
+                            </div>
+
+                            <!-- Show Answer After Grading -->
+                            @if (scenario.IsGraded)
+                            {
+                                <div class="alert alert-success">
+                                    <strong>✓ Suggested Answer:</strong>
+                                    <p class="mb-2 mt-2">@scenario.SuggestedAnswer</p>
+                                    
+                                    <hr />
+                                    
+                                    <strong>🔑 Key Concepts:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        @foreach (var concept in scenario.KeyConcepts)
+                                        {
+                                            <li>@concept</li>
+                                        }
+                                    </ul>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(scenario.UserAnswer))
+                                {
+                                    <div class="alert alert-secondary">
+                                        <strong>Your Answer:</strong>
+                                        <p class="mb-0 mt-2">@scenario.UserAnswer</p>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+                
+                @if (!scenarioExamSubmitted)
+                {
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg" @onclick="SubmitScenarioExam">
+                            📤 Submit Scenario Exam
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-grid">
+                        <button class="btn btn-secondary" @onclick="ResetScenarioExam">
+                            🔄 Generate New Scenarios
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .flashcard {
+        transition: transform 0.3s;
+    }
+    
+    .flashcard:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .flashcard-front, .flashcard-back {
+        min-height: 120px;
+    }
+    
+    .gap-2 {
+        gap: 0.5rem;
+    }
+</style>
+
+@code {
+    private string inputText = "";
+    private Summary? summary;
+    private List<Flashcard>? flashcards;
+    private List<QuizQuestion>? quizQuestions;
+    private ScenarioExamResult? scenarioExam;
+    
+    private bool isProcessing = false;
+    private bool isUploadingFile = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+    private string uploadedFileName = "";
+    private string currentAction = "";
+    
+    // Flashcard state
+    private HashSet<int> flippedCards = new();
+    
+    // Quiz state
+    private Dictionary<int, string> selectedAnswers = new();
+    private bool quizSubmitted = false;
+
+    // Scenario exam state
+    private bool scenarioExamSubmitted = false;
+    private ScenarioDifficulty scenarioDifficulty = ScenarioDifficulty.Medium; 
+    
+    private const long MaxFileSize = 50 * 1024 * 1024; // 50MB
+    
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = "";
+        successMessage = "";
+        isUploadingFile = true;
+        
+        try
+        {
+            var file = e.File;
+            uploadedFileName = file.Name;
+            
+            if (file.Size > MaxFileSize)
+            {
+                errorMessage = $"File is too large. Maximum size is 50MB. Your file is {file.Size / 1024 / 1024}MB.";
+                return;
+            }
+            
+            var extension = Path.GetExtension(file.Name).ToLower();
+            if (extension != ".txt" && extension != ".pdf" && extension != ".docx")
+            {
+                errorMessage = "Unsupported file type. Please upload .txt, .pdf, or .docx files.";
+                return;
+            }
+            
+            using var stream = file.OpenReadStream(MaxFileSize);
+            inputText = await FileProcessor.ExtractTextFromFileAsync(stream, file.Name);
+            
+            if (string.IsNullOrWhiteSpace(inputText))
+            {
+                errorMessage = "No text could be extracted from the file. The file might be empty or corrupted.";
+                return;
+            }
+            
+            successMessage = $"Successfully loaded {inputText.Length} characters from {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error processing file: {ex.Message}";
+            inputText = "";
+        }
+        finally
+        {
+            isUploadingFile = false;
+        }
+    }
+    
+    private async Task GenerateSummary()
+    {
+        isProcessing = true;
+        currentAction = "summary";
+        errorMessage = "";
+        successMessage = "";
+        summary = null;
+        
+        try
+        {
+            summary = await AIService.SummarizeAsync(inputText);
+            successMessage = "Summary generated successfully!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error generating summary: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+    
+    private async Task GenerateFlashcards()
+    {
+        isProcessing = true;
+        currentAction = "flashcards";
+        errorMessage = "";
+        successMessage = "";
+        flashcards = null;
+        flippedCards.Clear();
+        
+        try
+        {
+            flashcards = await AIService.GenerateFlashcardsAsync(inputText, 10);
+            successMessage = $"Generated {flashcards.Count} flashcards!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error generating flashcards: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+    
+    private async Task GenerateQuiz()
+    {
+        isProcessing = true;
+        currentAction = "quiz";
+        errorMessage = "";
+        successMessage = "";
+        quizQuestions = null;
+        ResetQuiz();
+        
+        try
+        {
+            quizQuestions = await AIService.GenerateQuizAsync(inputText, 40);
+            successMessage = $"Generated {quizQuestions.Count} questions with mixed question types!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error generating quiz: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task GenerateScenarioExam()
+    {
+        isProcessing = true;
+        currentAction = "scenario";
+        errorMessage = "";
+        successMessage = "";
+        scenarioExam = null;
+        scenarioExamSubmitted = false;
+        
+        try
+        {
+            scenarioExam = await AIService.GenerateScenarioExamAsync(inputText, 10, scenarioDifficulty);
+            successMessage = $"Generated {scenarioExam.Questions.Count} {scenarioDifficulty} scenario questions!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error generating scenario exam: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void SubmitScenarioExam()
+    {
+        if (scenarioExam?.Questions != null)
+        {
+            foreach (var question in scenarioExam.Questions)
+            {
+                question.IsGraded = true;
+            }
+            scenarioExamSubmitted = true;
+        }
+    }
+
+    private void ResetScenarioExam()
+    {
+        scenarioExam = null;
+        scenarioExamSubmitted = false;
+    }
+    
+    private void FlipCard(int index)
+    {
+        if (flippedCards.Contains(index))
+            flippedCards.Remove(index);
+        else
+            flippedCards.Add(index);
+    }
+    
+    private void SelectAnswer(int questionIndex, string answer)
+    {
+        if (!quizSubmitted)
+        {
+            selectedAnswers[questionIndex] = answer;
+        }
+    }
+    
+    private bool IsAnswerCorrect(int questionIndex, QuizQuestion question)
+    {
+        if (!selectedAnswers.ContainsKey(questionIndex))
+            return false;
+            
+        var userAnswer = selectedAnswers[questionIndex];
+        
+        return question.Type switch
+        {
+            QuestionType.MultipleChoice or QuestionType.ScenarioBased 
+                => int.TryParse(userAnswer, out int answerIndex) && answerIndex == question.CorrectIndex,
+            QuestionType.TrueFalse 
+                => bool.TryParse(userAnswer, out bool boolAnswer) && boolAnswer == question.CorrectBoolean,
+            QuestionType.Identification 
+                => userAnswer.Trim().Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
+    }
+    
+    private (int correct, double percentage) CalculateScore()
+    {
+        if (quizQuestions == null || quizQuestions.Count == 0)
+            return (0, 0);
+            
+        int correct = 0;
+        for (int i = 0; i < quizQuestions.Count; i++)
+        {
+            if (IsAnswerCorrect(i, quizQuestions[i]))
+                correct++;
+        }
+        
+        double percentage = (double)correct / quizQuestions.Count * 100;
+        return (correct, percentage);
+    }
+    
+    private void SubmitQuiz()
+    {
+        quizSubmitted = true;
+    }
+    
+    private void ResetQuiz()
+    {
+        selectedAnswers.Clear();
+        quizSubmitted = false;
+    }
+    
+    private string GetQuestionTypeLabel(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.MultipleChoice => "Multiple Choice",
+            QuestionType.TrueFalse => "True/False",
+            QuestionType.Identification => "Identification",
+            QuestionType.ScenarioBased => "Scenario-Based",
+            _ => "Unknown"
+        };
+    }
+    
+    private void Clear()
+    {
+        inputText = "";
+        summary = null;
+        flashcards = null;
+        quizQuestions = null;
+        scenarioExam = null;
+        errorMessage = "";
+        successMessage = "";
+        uploadedFileName = "";
+        flippedCards.Clear();
+        ResetQuiz();
+        ResetScenarioExam();
+    }
+    
+    private void LoadSampleText()
+    {
+        uploadedFileName = "";
+        inputText = @"Artificial intelligence (AI) is transforming how we live and work. Machine learning algorithms can now analyze vast amounts of data to identify patterns and make predictions. Deep learning, a subset of machine learning, uses neural networks with multiple layers to process complex information. These technologies are being applied in healthcare for disease diagnosis, in finance for fraud detection, and in transportation for autonomous vehicles. However, AI also raises important ethical questions about privacy, bias, and the future of employment. As AI continues to advance, it's crucial that we develop it responsibly and ensure its benefits are shared broadly across society.";
+    }
+}
